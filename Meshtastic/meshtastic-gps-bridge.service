@@ -1,0 +1,23 @@
+[Unit]
+Description=Meshtastic GPS NMEA Bridge
+Documentation=https://github.com/natek777/Hackberry-Pi_Zero/tree/main/Meshtastic
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+# Adjust the paths below to match your installation:
+#   --port  → serial port of the Meshtastic device (/dev/ttyACM0 or /dev/ttyUSB0)
+#   --pty   → write-end of the socat virtual serial pair
+ExecStartPre=/bin/bash -c 'socat PTY,raw,echo=0,link=/tmp/gps0 PTY,raw,echo=0,link=/tmp/gps1 &'
+ExecStartPre=/bin/bash -c 'sleep 1 && gpsd /tmp/gps1 -F /var/run/gpsd.sock'
+ExecStart=/usr/bin/python3 /home/pi/Meshtastic/meshtastic_gps_bridge.py \
+    --port /dev/ttyACM0 \
+    --pty /tmp/gps0
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
