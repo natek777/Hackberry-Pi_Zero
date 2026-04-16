@@ -13,24 +13,40 @@ on HackberryPi Zero.  Displays:
 
 Usage
 -----
-  python3 meshtastic_monitor.py --port /dev/ttyACM0
+  python3 meshtastic_monitor.py --port /dev/ttyACM0 [--i2c-bus 1] [--cardkb-addr 0x5F]
 
-Keys
+Keys (M5Stack CardKB or any connected terminal)
 ----
-  q           quit
-  m <text>    send a text message to the default channel (type in the input bar)
+  q / ESC     quit
+  Backspace   delete last character in the input bar
+  Enter       send the typed message to the mesh
+
+CardKB wiring
+-------------
+  Connect the M5Stack CardKB to the HackberryPi's STEMMA QT / I2C port:
+    SDA → GPIO2 (Pi pin 3)
+    SCL → GPIO3 (Pi pin 5)
+    3.3 V / GND from any convenient header pin
+  The CardKB sits at I2C address 0x5F on bus 1 by default.
 
 Dependencies
 ------------
-  pip install meshtastic
+  pip install meshtastic smbus2
 """
 
 import argparse
 import curses
 import datetime
 import logging
+import queue
 import threading
 import time
+
+try:
+    import smbus2
+    _SMBUS2_AVAILABLE = True
+except ImportError:
+    _SMBUS2_AVAILABLE = False
 
 try:
     import meshtastic
@@ -50,6 +66,62 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 MAX_MESSAGES = 10
+
+# M5Stack CardKB default I2C address
+CARDKB_DEFAULT_ADDR = 0x5F
+# CardKB returns 0x00 when no key is pressed
+CARDKB_NO_KEY = 0x00
+
+
+# ---------------------------------------------------------------------------
+# M5Stack CardKB reader (background thread)
+# ---------------------------------------------------------------------------
+
+class CardKBReader:
+    """Poll the M5Stack CardKB over I2C and push keycodes into *key_queue*.
+
+    The CardKB sits at I2C address 0x5F on bus 1 by default.  A single-byte
+    read from the device returns the ASCII keycode of the pressed key, or
+    0x00 when no key is held.  Special keycodes used here:
+      0x08 / 0x7F — Backspace / Delete
+      0x0D        — Enter / Return
+      0x1B        — Escape
+    All other printable ASCII bytes are forwarded as-is.
+    """
+
+    def __init__(self, i2c_bus: int, addr: int, key_queue: queue.Queue):
+        self._bus_num = i2c_bus
+        self._addr = addr
+        self._queue = key_queue
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True, name="cardkb")
+
+    def start(self) -> bool:
+        """Open the I2C bus and start polling.  Returns False if unavailable."""
+        if not _SMBUS2_AVAILABLE:
+            log.warning("smbus2 not installed — CardKB disabled. Run: pip3 install smbus2")
+            return False
+        try:
+            self._bus = smbus2.SMBus(self._bus_num)
+        except Exception as exc:
+            log.warning("Cannot open I2C bus %d: %s — CardKB disabled.", self._bus_num, exc)
+            return False
+        self._thread.start()
+        log.info("CardKB reader started on I2C bus %d addr 0x%02X", self._bus_num, self._addr)
+        return True
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def _run(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                key = self._bus.read_byte(self._addr)
+                if key != CARDKB_NO_KEY:
+                    self._queue.put(key)
+            except Exception as exc:
+                log.debug("CardKB read error: %s", exc)
+            time.sleep(0.03)  # ~30 ms poll interval is comfortable for typing
 
 
 # ---------------------------------------------------------------------------
@@ -273,7 +345,7 @@ def draw(stdscr, state_snap: dict, input_buf: str) -> None:
         _safe_addstr(stdscr, h - 3, 0, "─" * (w - 1), CYAN)
         _safe_addstr(stdscr, h - 2, 0, " Send (Enter): ", 0)
         _safe_addstr(stdscr, h - 2, 15, input_buf, YELLOW)
-        _safe_addstr(stdscr, h - 1, 0, " [q] quit   [type message + Enter] send", 0)
+        _safe_addstr(stdscr, h - 1, 0, " [q/ESC] quit   [type + Enter] send  (CardKB or terminal)", 0)
 
     stdscr.refresh()
 
@@ -282,7 +354,30 @@ def draw(stdscr, state_snap: dict, input_buf: str) -> None:
 # Main loop
 # ---------------------------------------------------------------------------
 
-def run_monitor(stdscr, iface, state: State) -> None:
+def _process_key(ch, key, input_buf: str, iface, state: State) -> tuple[str, bool]:
+    """Handle a single keypress.  Returns (updated_input_buf, should_quit)."""
+    if ch in ("q", "Q", "\x1b"):  # q, Q, or ESC
+        return input_buf, True
+    if ch in ("\n", "\r"):
+        msg = input_buf.strip()
+        if msg:
+            try:
+                iface.sendText(msg)
+                state.add_message(
+                    f"[{datetime.datetime.now().strftime('%H:%M:%S')}] (me): {msg}"
+                )
+                log.info("Sent message: %s", msg)
+            except Exception as exc:
+                log.warning("Failed to send message: %s", exc)
+        return "", False
+    if key == curses.KEY_BACKSPACE or ch in ("\x7f", "\x08"):
+        return input_buf[:-1], False
+    if ch and ch.isprintable():
+        return input_buf + ch, False
+    return input_buf, False
+
+
+def run_monitor(stdscr, iface, state: State, cardkb_queue: queue.Queue) -> None:
     curses.curs_set(0)
     stdscr.nodelay(True)
     stdscr.timeout(500)
@@ -293,6 +388,15 @@ def run_monitor(stdscr, iface, state: State) -> None:
         snap = state.snapshot()
         draw(stdscr, snap, input_buf)
 
+        # --- drain CardKB queue first (hardware keyboard has priority) ---
+        while not cardkb_queue.empty():
+            raw = cardkb_queue.get_nowait()
+            ch = chr(raw) if 0 < raw < 256 else None
+            input_buf, quit_flag = _process_key(ch, raw, input_buf, iface, state)
+            if quit_flag:
+                return
+
+        # --- then check terminal keyboard ---
         try:
             key = stdscr.get_wch()
         except curses.error:
@@ -306,22 +410,9 @@ def run_monitor(stdscr, iface, state: State) -> None:
         else:
             ch = chr(key) if 0 < key < 256 else None
 
-        if ch == "q" or ch == "Q":
-            break
-        elif ch in ("\n", "\r"):
-            msg = input_buf.strip()
-            if msg:
-                try:
-                    iface.sendText(msg)
-                    state.add_message(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] (me): {msg}")
-                    log.info("Sent message: %s", msg)
-                except Exception as exc:
-                    log.warning("Failed to send message: %s", exc)
-            input_buf = ""
-        elif key == curses.KEY_BACKSPACE or ch in ("\x7f", "\x08"):
-            input_buf = input_buf[:-1]
-        elif ch and ch.isprintable():
-            input_buf += ch
+        input_buf, quit_flag = _process_key(ch, key, input_buf, iface, state)
+        if quit_flag:
+            return
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +427,20 @@ def main() -> None:
         "--port",
         default="/dev/ttyACM0",
         help="Serial port for the Meshtastic device (default: /dev/ttyACM0)",
+    )
+    parser.add_argument(
+        "--i2c-bus",
+        type=int,
+        default=1,
+        metavar="BUS",
+        help="I2C bus number for the M5Stack CardKB (default: 1)",
+    )
+    parser.add_argument(
+        "--cardkb-addr",
+        type=lambda x: int(x, 0),
+        default=CARDKB_DEFAULT_ADDR,
+        metavar="ADDR",
+        help=f"I2C address of the CardKB in hex or decimal (default: 0x{CARDKB_DEFAULT_ADDR:02X})",
     )
     args = parser.parse_args()
 
@@ -354,9 +459,15 @@ def main() -> None:
     except Exception:
         pass
 
+    # Start CardKB I2C reader
+    cardkb_queue: queue.Queue = queue.Queue()
+    cardkb = CardKBReader(i2c_bus=args.i2c_bus, addr=args.cardkb_addr, key_queue=cardkb_queue)
+    cardkb.start()
+
     try:
-        curses.wrapper(run_monitor, iface, state)
+        curses.wrapper(run_monitor, iface, state, cardkb_queue)
     finally:
+        cardkb.stop()
         iface.close()
         log.info("Disconnected.")
 

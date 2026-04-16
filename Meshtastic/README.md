@@ -55,8 +55,8 @@ sudo raspi-config
 
 ```sh
 sudo apt update
-sudo apt install python3-pip gpsd gpsd-clients chrony socat
-pip3 install meshtastic
+sudo apt install python3-pip gpsd gpsd-clients chrony socat i2c-tools
+pip3 install meshtastic smbus2
 ```
 
 Verify connectivity:
@@ -67,7 +67,38 @@ meshtastic --port /dev/ttyACM0 --info
 
 ---
 
-## 3. GPS Integration
+## 3. M5Stack CardKB Keyboard
+
+The dashboard is designed to be used with the **M5Stack CardKB** (MEGA328P-based mini I2C keyboard). Connect it to the HackberryPi's STEMMA QT / Grove I2C header:
+
+| CardKB pin | HackberryPi GPIO | Pi physical pin |
+|------------|-----------------|-----------------|
+| SDA        | GPIO2 (I2C1 SDA) | Pin 3           |
+| SCL        | GPIO3 (I2C1 SCL) | Pin 5           |
+| 3.3 V      | 3.3 V            | Pin 1           |
+| GND        | GND              | Pin 6           |
+
+> The CardKB operates at 3.3 V and communicates over I2C at address **0x5F** on bus 1. No level shifter is needed.
+
+Enable I2C on the Pi if not already active:
+
+```sh
+sudo raspi-config
+# Interface Options → I2C → Enable
+```
+
+Verify the CardKB is detected:
+
+```sh
+sudo i2cdetect -y 1
+# You should see 0x5F in the output
+```
+
+The monitor dashboard will automatically find and use the CardKB. If `smbus2` cannot open the I2C bus the dashboard still runs — you can use any SSH terminal keyboard instead.
+
+---
+
+## 4. GPS Integration
 
 ### Option A: Native NMEA passthrough (if supported by your firmware build)
 
@@ -100,11 +131,11 @@ sudo gpsd /tmp/gps1 -F /var/run/gpsd.sock
 python3 meshtastic_gps_bridge.py --port /dev/ttyACM0 --pty /tmp/gps0
 ```
 
-See [§6 Systemd Services](#6-systemd-services) to run this automatically on boot.
+See [§7 Systemd Services](#7-systemd-services) to run this automatically on boot.
 
 ---
 
-## 4. System Time from GPS
+## 5. System Time from GPS
 
 With `gpsd` running, configure `chrony` to use the GPS as a stratum-1 reference clock.
 
@@ -125,7 +156,7 @@ You should see an `NMEA` row. The HackberryPi will now keep accurate time in the
 
 ---
 
-## 5. Terminal Dashboard
+## 6. Terminal Dashboard
 
 `meshtastic_monitor.py` is a `curses`-based terminal dashboard that shows:
 
@@ -139,11 +170,20 @@ You should see an `NMEA` row. The HackberryPi will now keep accurate time in the
 python3 meshtastic_monitor.py --port /dev/ttyACM0
 ```
 
+Type a message using the **M5Stack CardKB** (or any SSH/terminal keyboard) and press **Enter** to send it to the mesh. Press **q** or **Esc** to quit.
+
+Optional flags:
+
+```sh
+# Use a different I2C bus or CardKB address
+python3 meshtastic_monitor.py --port /dev/ttyACM0 --i2c-bus 1 --cardkb-addr 0x5F
+```
+
 It fits comfortably in a standard 80×24 terminal on the HackberryPi's display.
 
 ---
 
-## 6. Systemd Services
+## 7. Systemd Services
 
 The GPS pipeline is split into four properly-ordered systemd units:
 
@@ -181,7 +221,7 @@ journalctl -u meshtastic-gps-bridge -f
 
 ---
 
-## 7. LoRa Mesh Messaging
+## 8. LoRa Mesh Messaging
 
 Once connected you can use the full Meshtastic CLI or Python API:
 
@@ -193,16 +233,16 @@ meshtastic --port /dev/ttyACM0 --sendtext "hello from HackberryPi"
 meshtastic --port /dev/ttyACM0 --ch-set name FieldOps --ch-index 0
 ```
 
-The `meshtastic_monitor.py` dashboard displays incoming messages in real time. Press **q** to quit.
+The `meshtastic_monitor.py` dashboard displays incoming messages in real time. Use the **M5Stack CardKB** or any terminal keyboard to type and send messages. Press **q** or **Esc** to quit.
 
 ---
 
-## 8. Optional Enhancements
+## 9. Optional Enhancements
 
 | Enhancement | How |
 |---|---|
 | Offline maps | Install `Viking` with cached OpenStreetMap tiles |
-| Keyboard messaging | Use `meshtastic_monitor.py` input bar with the BlackBerry keyboard |
+| Keyboard messaging | M5Stack CardKB plugged into the STEMMA QT I2C port — built in to `meshtastic_monitor.py` |
 | NMEA output in firmware | Enable **Serial Module → NMEA** in the Meshtastic app or web UI |
 | Power isolation | Add an inline USB power switch so the Heltec can be turned off without unplugging |
 | Multiple channels | Add `--ch-index 1` (etc.) to the CLI or use `iface.sendText(msg, channelIndex=1)` |
@@ -223,3 +263,10 @@ The `meshtastic_monitor.py` dashboard displays incoming messages in real time. P
 **`chronyc sources` does not show NMEA**
 - Confirm `gpsd` is running: `systemctl status gpsd`.
 - Confirm `chrony` has the `refclock SHM 0` line and was restarted after editing.
+
+**CardKB not responding**
+- Verify I2C is enabled: `sudo raspi-config` → Interface Options → I2C → Enable.
+- Check the CardKB is detected: `sudo i2cdetect -y 1` — you should see `5f` in the grid.
+- Make sure `smbus2` is installed: `pip3 install smbus2`.
+- If `0x5F` is not shown, check the wiring (SDA/SCL/GND/3.3 V) on the STEMMA QT connector.
+- The dashboard will still work without the CardKB; use an SSH terminal keyboard instead.

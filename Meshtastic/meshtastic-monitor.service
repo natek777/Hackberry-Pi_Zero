@@ -11,9 +11,11 @@ Environment=TERM=xterm-256color
 TTYPath=/dev/tty1
 StandardInput=tty
 StandardOutput=tty
-# Adjust --port if your device enumerates differently
+# Adjust --port if your device enumerates differently; --i2c-bus matches the Pi's STEMMA QT port
 ExecStart=/usr/bin/python3 /home/pi/Meshtastic/meshtastic_monitor.py \
-    --port /dev/ttyACM0
+    --port /dev/ttyACM0 \
+    --i2c-bus 1 \
+    --cardkb-addr 0x5F
 Restart=on-failure
 RestartSec=15
 
