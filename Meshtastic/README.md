@@ -145,13 +145,26 @@ It fits comfortably in a standard 80×24 terminal on the HackberryPi's display.
 
 ## 6. Systemd Services
 
-Copy the two service files to make everything start on boot:
+The GPS pipeline is split into four properly-ordered systemd units:
+
+| File | Purpose |
+|------|---------|
+| `meshtastic-socat.service` | Creates the virtual serial pair `/tmp/gps0` ↔ `/tmp/gps1` |
+| `meshtastic-gpsd.service` | Runs `gpsd` on `/tmp/gps1` (depends on socat) |
+| `meshtastic-gps-bridge.service` | Runs the NMEA bridge, writing to `/tmp/gps0` (depends on gpsd) |
+| `meshtastic-monitor.service` | Runs the terminal dashboard (depends on the bridge) |
+
+Install all four:
 
 ```sh
-sudo cp meshtastic-gps-bridge.service /etc/systemd/system/
-sudo cp meshtastic-monitor.service    /etc/systemd/system/
+sudo cp meshtastic-socat.service       /etc/systemd/system/
+sudo cp meshtastic-gpsd.service        /etc/systemd/system/
+sudo cp meshtastic-gps-bridge.service  /etc/systemd/system/
+sudo cp meshtastic-monitor.service     /etc/systemd/system/
 
 sudo systemctl daemon-reload
+sudo systemctl enable --now meshtastic-socat
+sudo systemctl enable --now meshtastic-gpsd
 sudo systemctl enable --now meshtastic-gps-bridge
 sudo systemctl enable --now meshtastic-monitor
 ```

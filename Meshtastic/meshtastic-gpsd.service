@@ -1,0 +1,15 @@
+[Unit]
+Description=gpsd receiving NMEA from Meshtastic GPS bridge
+Documentation=https://github.com/natek777/Hackberry-Pi_Zero/tree/main/Meshtastic
+After=meshtastic-socat.service
+Requires=meshtastic-socat.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/bash -c 'until [ -e /tmp/gps1 ]; do sleep 0.2; done'
+ExecStart=/usr/sbin/gpsd -n -N /tmp/gps1 -F /var/run/gpsd.sock
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

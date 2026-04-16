@@ -234,7 +234,7 @@ def draw(stdscr, state_snap: dict, input_buf: str) -> None:
         gps_ts = state_snap["gps_time"].strftime("%Y-%m-%d  %H:%M:%S UTC  (GPS)")
         _safe_addstr(stdscr, row, 4, f"GPS    : {gps_ts}", GREEN)
     else:
-        sys_ts = datetime.datetime.utcnow().strftime("%Y-%m-%d  %H:%M:%S UTC  (system)")
+        sys_ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d  %H:%M:%S UTC  (system)")
         _safe_addstr(stdscr, row, 4, f"System : {sys_ts}", YELLOW)
     row += 2
 
