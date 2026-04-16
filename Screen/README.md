@@ -99,7 +99,7 @@ param_dpi_vbp=15
 param_dpi_clock=36720000
 ```
 
-> **Note:** The exact overlay name and parameter keys depend on the kernel version shipped with your Radxa image. If `hyperpixel4` is not available, check the `/boot/overlays/` directory on the card for available overlays and consult the [Radxa documentation](https://docs.radxa.com/en/cubie/a7z) or the community Discord for the latest confirmed working configuration.
+> **Note:** The Radxa A7Z uses an Allwinner A733 SoC, which does not use the `hyperpixel4` overlay from Raspberry Pi. The overlay name and parameter keys depend on the kernel and OS image you are using. To find available overlays on your system run `ls /boot/overlays/` and look for a DPI or LCD-related entry. For an up-to-date, confirmed working configuration for the HackberryPi 720×720 display on the Radxa A7Z, consult the [Radxa documentation](https://docs.radxa.com/en/cubie/a7z) or the community [Discord channel](https://discord.gg/WzPthAmMbP).
 
 ### Step 3 – Reboot
 Insert the microSD card, power on the HackberryPi, and the display should be active after the boot sequence completes.
