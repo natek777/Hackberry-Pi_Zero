@@ -71,6 +71,39 @@ Put the `hyperpixel4.dtbo`file into `/boot/overlays`folder
 Now you can insert the TF card in to the slot and your HackberryPi will run RetroPi OS on the screen.  
 ![RetroPiFoto](https://github.com/user-attachments/assets/8cc5cef6-7c7e-4d3f-ad7a-3357ff6c9ce3)
 
+# Radxa Cubie A7Z  
+The Radxa Cubie A7Z runs Debian Linux and uses a different boot configuration from Raspberry Pi OS. Instead of `config.txt`, display settings are managed via `/boot/uEnv.txt` or `/boot/armbianEnv.txt` depending on the image used.
+
+### Step 1 – Flash the Radxa A7Z Debian image
+Download the official Debian image from the [Radxa A7Z download page](https://docs.radxa.com/en/cubie/a7z/getting-started/download) and flash it to a microSD card using [Balena Etcher](https://www.balena.io/etcher/) or Raspberry Pi Imager.
+
+### Step 2 – Enable the DPI display overlay
+Mount the microSD card on your PC (or SSH into the board after first boot) and open `/boot/armbianEnv.txt`:
+
+```sh
+sudo nano /boot/armbianEnv.txt
+```
+
+Add the following lines to enable the 720×720 DPI display:
+
+```sh
+overlays=hyperpixel4
+param_dpi_hactive=720
+param_dpi_vactive=720
+param_dpi_hfp=20
+param_dpi_hsync=20
+param_dpi_hbp=40
+param_dpi_vfp=15
+param_dpi_vsync=15
+param_dpi_vbp=15
+param_dpi_clock=36720000
+```
+
+> **Note:** The exact overlay name and parameter keys depend on the kernel version shipped with your Radxa image. If `hyperpixel4` is not available, check the `/boot/overlays/` directory on the card for available overlays and consult the [Radxa documentation](https://docs.radxa.com/en/cubie/a7z) or the community Discord for the latest confirmed working configuration.
+
+### Step 3 – Reboot
+Insert the microSD card, power on the HackberryPi, and the display should be active after the boot sequence completes.
+
 # DietPi  
 DietPi is an extremely lightweight Debian OS, highly optimised for minimal CPU and RAM resource usage. The instruction is made by [Bjoern Franck](https://github.com/bjoernfranck)  
 You can view the tutorial at this [page](https://github.com/bjoernfranck/HackberryPi/tree/main/DietPi)  

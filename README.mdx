@@ -1,5 +1,5 @@
 # Hackberry-Pi_Zero
-A handheld Linux terminal using Raspberry pi Zero 2W as Core with 4" 720X720 TFT display and the original BlackBerry Keyboard
+A handheld Linux terminal using Raspberry Pi Zero 2W (or Radxa Cubie A7Z) as Core with 4" 720X720 TFT display and the original BlackBerry Keyboard
 ![PIC1](https://github.com/user-attachments/assets/5038ae93-bd02-41cb-a2df-9c7afeaa57e3)
 ![PTC3](https://github.com/ZitaoTech/Hackberry-Pi_Zero/blob/main/Picture/9900_bild1.jpg)  
 ![PIC2](https://github.com/user-attachments/assets/19b1a504-f155-4f84-992f-cf4c463f5743)  
@@ -9,14 +9,14 @@ A handheld Linux terminal using Raspberry pi Zero 2W as Core with 4" 720X720 TFT
 The main reason why I design and built this handheld cyberdeck is to treat this as a lernning tool and also a funny toy for the hackers. It is powered by a raspberry pi zero 2w and a 4" 720X720 TFT display. 
 
 Here are some **Main Features:**  
-**Main Processor**: Only compatible with Raspberry Pi Zero 2w.  
+**Main Processor**: Compatible with Raspberry Pi Zero 2W. Also supports [Radxa Cubie A7Z](https://radxa.com/products/cubie/a7z) as a drop-in replacement for higher performance and USB 3.1 support (see [Radxa A7Z upgrade section](#radxa-cubie-a7z-upgrade) below).  
 **Display**: 4" 720X720 high resolution TFT display.  
 **Dual Swappable battery Design**: Replace your battery in 10 seconds without killing the power!  
 **Battery Type**: Nokia BL-5C. You can buy it anywhere in the world.  
 **Battery Life**: In my testing: 3.5 hours using the desktop, 5 hours on the commandline.  
 **Keyboard Mouse Combo**: Yes, this cyberdeck has keyboard and mouse combo on board. You can choose blackberry Q10 or Q20 or 9900 keyboard.  
 **Fully customizable keymap**: You can connect the keyboard with a computer and customizable the keymap through [VIAL](https://get.vial.today/) easily.  
-**3 USB2.0 Ports**: This handheld has 3 USB2.0 Ports, you can use it with USB-Stick or 4G Module Dongle or any USB thing.  
+**3 USB2.0 Ports**: This handheld has 3 USB2.0 Ports, you can use it with USB-Stick or 4G Module Dongle or any USB thing. When using the Radxa Cubie A7Z, the on-board USB-C port supports USB 3.1 (up to 10 Gbps).  
 **Charging Ampere**: Charge through the Type-C port. 1A charging rate; this handheld can be fully charged within 3 hours.  
 **Stemma I2C Port**: This device has a Stemma I2C port on board, you can connect with any I2C sensors.  
 **TF card Slot**: There is an external TF card Slot. You can replace your OS image very easily.  
@@ -42,8 +42,33 @@ Put the red switch to the lower position, connect the keyboard with your compute
 ![image](https://github.com/user-attachments/assets/7c4e9b53-7a00-4cdd-b0b7-751647f76f6b)
 
 
+# <a name='radxa-cubie-a7z-upgrade'>Radxa Cubie A7Z Upgrade</a>
+The [Radxa Cubie A7Z](https://radxa.com/products/cubie/a7z) is a direct drop-in replacement for the Raspberry Pi Zero 2W. It shares the same 65×30 mm footprint and the same 40-pin GPIO header layout, so it fits the HackberryPi PCB without any hardware modification.
+
+### Why upgrade to Radxa Cubie A7Z?
+| Feature | Raspberry Pi Zero 2W | Radxa Cubie A7Z |
+|---|---|---|
+| CPU | 4× Cortex-A53 @ 1 GHz | 2× Cortex-A76 + 6× Cortex-A55 (up to 2 GHz) |
+| RAM | 512 MB LPDDR2 | 1 GB / 2 GB / 4 GB / 8 GB LPDDR4x |
+| USB | USB 2.0 only | USB 2.0 + **USB 3.1 Type-C** (10 Gbps) |
+| Wi-Fi | Wi-Fi 4 (802.11n) | Wi-Fi 6 (802.11ax) |
+| Bluetooth | Bluetooth 4.2 | Bluetooth 5.4 |
+| OS | Raspberry Pi OS / Kali / etc. | Debian Linux / Android 13 |
+| Form factor | 65 × 30 mm | 65 × 30 mm |
+
+### USB 3.1 on HackberryPi with the Radxa A7Z
+The A7Z's USB-C 3.1 port is routed to the same connector as the RPi Zero 2W's USB port on the HackberryPi PCB. This means you get **USB 3.1 Gen 2 (10 Gbps)** speeds when connecting USB 3-compatible devices (USB sticks, SSDs, 4G/5G dongles) through the existing USB hub on HackberryPi.
+
+### What you need
+- Radxa Cubie A7Z board (same physical size as RPi Zero 2W)
+- A fresh microSD card (16 GB or larger recommended)
+- The [Radxa A7Z Debian image](https://docs.radxa.com/en/cubie/a7z/getting-started/download)
+
+### Display and OS setup for Radxa A7Z
+Because the A7Z runs Debian (not Raspberry Pi OS), the display configuration is different. See the [Screen setup page](https://github.com/ZitaoTech/Hackberry-Pi_Zero/tree/main/Screen) for Radxa A7Z-specific display instructions, and the [Basic-Setup page](https://github.com/ZitaoTech/Hackberry-Pi_Zero/tree/main/Basic-Setup) for Debian setup tips.
+
 # <a name='Different Operating System  '>Different Operating System</a>
-You can install Kali, Raspberrypi OS, or Retropi and many other OS into HackberryPi.  
+You can install Kali, Raspberrypi OS, or Retropi and many other OS into HackberryPi. If you are using the Radxa Cubie A7Z, you can run Debian Linux.  
 [This page](https://github.com/ZitaoTech/Hackberry-Pi_Zero/tree/main/Screen) will tell you how to install the display driver in a different operating system.  
 And [this page](https://github.com/ZitaoTech/Hackberry-Pi_Zero/tree/main/Basic-Setup) will tell you some basic settings on different OS to make HackberryPi have better performance. 
 # <a name='Basic Tutorial  '>Basic Tutorial</a>
