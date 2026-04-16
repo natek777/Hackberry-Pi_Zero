@@ -69,16 +69,24 @@ meshtastic --port /dev/ttyACM0 --info
 
 ## 3. M5Stack CardKB Keyboard
 
-The dashboard is designed to be used with the **M5Stack CardKB** (MEGA328P-based mini I2C keyboard). Connect it to the HackberryPi's STEMMA QT / Grove I2C header:
+The dashboard is designed to be used with the **M5Stack CardKB** (MEGA328P-based mini I2C keyboard). The CardKB connects to the **Radxa A7Z / Pi Zero 2W compute board** via the HackberryPi's STEMMA QT / Grove I2C header.
+
+> ⚠️ The HackberryPi's STEMMA QT port uses **GPIO10 (SDA) and GPIO11 (SCL)**, *not* the standard Pi I2C1 pins (GPIO2/GPIO3), because those are reserved for the display. The bus appears as `/dev/i2c-11`.
 
 | CardKB pin | HackberryPi GPIO | Pi physical pin |
 |------------|-----------------|-----------------|
-| SDA        | GPIO2 (I2C1 SDA) | Pin 3           |
-| SCL        | GPIO3 (I2C1 SCL) | Pin 5           |
+| SDA        | GPIO10 (I2C SDA) | Pin 19          |
+| SCL        | GPIO11 (I2C SCL) | Pin 23          |
 | 3.3 V      | 3.3 V            | Pin 1           |
 | GND        | GND              | Pin 6           |
 
-> The CardKB operates at 3.3 V and communicates over I2C at address **0x5F** on bus 1. No level shifter is needed.
+> The CardKB operates at 3.3 V and communicates over I2C at address **0x5F**. No level shifter is needed.
+
+**Before using the STEMMA QT port**, create the required symlink so that standard I2C tools and `smbus2` can find it on bus 1:
+
+```sh
+sudo ln -s /dev/i2c-11 /dev/i2c-1
+```
 
 Enable I2C on the Pi if not already active:
 
@@ -265,8 +273,8 @@ The `meshtastic_monitor.py` dashboard displays incoming messages in real time. U
 - Confirm `chrony` has the `refclock SHM 0` line and was restarted after editing.
 
 **CardKB not responding**
-- Verify I2C is enabled: `sudo raspi-config` → Interface Options → I2C → Enable.
-- Check the CardKB is detected: `sudo i2cdetect -y 1` — you should see `5f` in the grid.
+- Ensure the `i2c-11 → i2c-1` symlink exists: `sudo ln -s /dev/i2c-11 /dev/i2c-1` (the HackberryPi STEMMA QT port is `/dev/i2c-11`).
 - Make sure `smbus2` is installed: `pip3 install smbus2`.
-- If `0x5F` is not shown, check the wiring (SDA/SCL/GND/3.3 V) on the STEMMA QT connector.
+- Check the CardKB is detected: `sudo i2cdetect -y 1` — you should see `5f` in the grid.
+- If `0x5F` is not shown, verify the wiring on the STEMMA QT connector: SDA→GPIO10 (pin 19), SCL→GPIO11 (pin 23), 3.3 V, GND.
 - The dashboard will still work without the CardKB; use an SSH terminal keyboard instead.

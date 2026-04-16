@@ -21,13 +21,15 @@ Keys (M5Stack CardKB or any connected terminal)
   Backspace   delete last character in the input bar
   Enter       send the typed message to the mesh
 
-CardKB wiring
--------------
-  Connect the M5Stack CardKB to the HackberryPi's STEMMA QT / I2C port:
-    SDA → GPIO2 (Pi pin 3)
-    SCL → GPIO3 (Pi pin 5)
+CardKB wiring (connects to the Radxa A7Z / Pi Zero 2W compute board)
+---------------------------------------------------------------------
+  The HackberryPi's STEMMA QT port uses the *alternate* I2C pins:
+    SDA → GPIO10 (Pi physical pin 19)
+    SCL → GPIO11 (Pi physical pin 23)
     3.3 V / GND from any convenient header pin
-  The CardKB sits at I2C address 0x5F on bus 1 by default.
+  The I2C bus appears as /dev/i2c-11; symlink it to i2c-1 first:
+    sudo ln -s /dev/i2c-11 /dev/i2c-1
+  The CardKB sits at I2C address 0x5F on bus 1 (after the symlink).
 
 Dependencies
 ------------
