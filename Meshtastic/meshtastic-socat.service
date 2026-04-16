@@ -4,8 +4,8 @@ Documentation=https://github.com/natek777/Hackberry-Pi_Zero/tree/main/Meshtastic
 After=network.target
 
 [Service]
-Type=forking
-# socat runs in the foreground; -d -d prints two PTY paths to stderr
+Type=simple
+# socat runs in the foreground; the PTY symlinks appear shortly after start
 ExecStart=/usr/bin/socat PTY,raw,echo=0,link=/tmp/gps0 PTY,raw,echo=0,link=/tmp/gps1
 Restart=on-failure
 RestartSec=5
