@@ -61,6 +61,30 @@ sudo hdparm -t /dev/sda
 
 You should see read speeds well above 100 MB/s for a USB 3-capable device.
 
+## ST7798 SPI display on Radxa A7Z
+
+The HackberryPi uses a 3.5" ST7798 SPI TFT touchscreen. On Debian for the Radxa A7Z, the display is configured in `/boot/armbianEnv.txt`. See the [Screen setup page](https://github.com/ZitaoTech/Hackberry-Pi_Zero/tree/main/Screen) for the full configuration.
+
+To verify the display framebuffer is active after setup:
+
+```sh
+ls /dev/fb*
+sudo dmesg | grep -i spi
+```
+
+If the framebuffer device `/dev/fb1` is present, route the console to it:
+
+```sh
+sudo con2fbmap 1 1
+```
+
+To calibrate the XPT2046 touch layer:
+
+```sh
+sudo apt-get install xinput-calibrator evtest
+DISPLAY=:0.0 xinput_calibrator
+```
+
 ## Radxa A7Z documentation
 
 For board-specific documentation, pinouts, and OS images, visit the [Radxa Cubie A7Z docs page](https://docs.radxa.com/en/cubie/a7z).

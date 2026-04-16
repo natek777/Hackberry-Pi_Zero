@@ -7,104 +7,158 @@ vcgencmd display_power 0
 vcgencmd display_power 1
 ```
 ### The default backlight brightness of the display after you turn HackberryPi on would be 50%. There is a physical button of the top side of HackberryPi. You can single press it to toggle the backlight of the display. You can also adjust the backlight brightness by long pressing the button: If you first long press the button the backlight brightness will slowly increase to 100%, if you now release the button and long press the button again, the backlight brightness of the display will slowly drop to 10%.  
-# Raspberry Pi OS after 04/04/2022 or later  
 
-Add the following line in `/boot/config.txt` in your TF card  
+## Display: ST7798 3.5" 320×480 SPI TFT Touchscreen
+
+The HackberryPi uses an **ST7798**-based 3.5" TFT display (320×480 pixels) connected over SPI. The touch layer is handled by an **XPT2046** resistive touch controller on a second SPI chip-select.
+
+### Pin connections (40-pin GPIO header)
+
+| Display pin | RPi GPIO (BCM) | Physical pin |
+|---|---|---|
+| VCC | 3.3 V | Pin 1 |
+| GND | GND | Pin 6 |
+| SCL / SCK | GPIO 11 (SPI0 SCLK) | Pin 23 |
+| SDA / MOSI | GPIO 10 (SPI0 MOSI) | Pin 19 |
+| CS (display) | GPIO 8 (SPI0 CE0) | Pin 24 |
+| DC / RS | GPIO 25 | Pin 22 |
+| RST | GPIO 27 | Pin 13 |
+| BL (backlight) | GPIO 18 (or 3.3 V) | Pin 12 |
+| T_CS (touch CS) | GPIO 7 (SPI0 CE1) | Pin 26 |
+| T_IRQ (touch IRQ) | GPIO 17 | Pin 11 |
+
+> Adjust GPIO numbers if your wiring differs.
+
+---
+
+# Raspberry Pi OS  
+
+### Step 1 – Enable SPI and load the ST7798 driver  
+Add the following lines to `/boot/config.txt` (or `/boot/firmware/config.txt` on newer images):
 
 ```sh
-dtoverlay=vc4-kms-dpi-hyperpixel4sq
-``` 
-And the `config.txt` file will look like this:  
-![image](https://github.com/user-attachments/assets/33139e0d-2477-4732-8ff5-a3e2bce9d383)  
-Follow the steps:  
-Insert the TF card in to the slot  
-Turn on the HackberryPi, the screen will be black, wait until the white led on top stop blinking.  
-Turn off the HackberryPi and reboot.  
-And then your HackberryPi will run Raspberry Pi OS on the screen.  
-![RaspberryPiOSfoto](https://github.com/user-attachments/assets/faff7b6f-a20e-45b8-801a-6f6dfe51b122)
+dtparam=spi=on
 
-# Kali Linux or Raspberry Pi OS before 04/04/2022   
+# ST7798 display (compatible with the st7796s fbtft driver)
+dtoverlay=fbtft,spi0-0-speed=32000000,width=320,height=480,bgr,rotate=270,reset_pin=27,dc_pin=25,led_pin=18
+
+# XPT2046 resistive touchscreen
+dtoverlay=ads7846,cs=1,speed=2000000,penirq=17,penirq_pull=2,swapxy=1,pmax=255,xmin=200,xmax=3900,ymin=200,ymax=3900,x_plate_ohms=60
+```
+
+> **Tip:** If the `fbtft` overlay name is not found, check available overlays with `ls /boot/overlays/` and look for `st7796s` or `flexfb`. Substitute as needed.
+
+### Step 2 – Reboot  
+Insert the TF card, turn on HackberryPi, and wait for the boot sequence to complete. The display will appear as `/dev/fb1`.
+
+### Step 3 – Route console output to the display  
+```sh
+sudo con2fbmap 1 1
+```
+To make this permanent, add `fbcon=map:10` to the `extraargs` / `cmdline.txt` kernel parameters.
+
+### Step 4 – Calibrate the touchscreen  
+```sh
+sudo apt-get install xinput-calibrator
+DISPLAY=:0.0 xinput_calibrator
+```
+Follow the on-screen prompts and save the output to `/etc/X11/xorg.conf.d/99-calibration.conf`.
+
+---
+
+# Kali Linux  
 
 ### Step 1  
-Add the following lines in `/boot/config.txt` in your TF card  
+Add the following lines to `/boot/config.txt` in your TF card:
 
 ```sh
-dtoverlay=hyperpixel4
-overscan_left=0
-overscan_right=0 
-overscan_top=0
-overscan_bottom=0
-framebuffer_width=720
-enable_dpi_lcd=1
-display_default_lcd=1
-dpi_group=2
-dpi_mode=87
-dpi_output_format=0x5f026
-dpi_timings=720 0 20 20 40 720 0 15 15 15 0 0 0 60 0 36720000 4
+dtparam=spi=on
+dtoverlay=fbtft,spi0-0-speed=32000000,width=320,height=480,bgr,rotate=270,reset_pin=27,dc_pin=25,led_pin=18
+dtoverlay=ads7846,cs=1,speed=2000000,penirq=17,penirq_pull=2,swapxy=1,pmax=255,xmin=200,xmax=3900,ymin=200,ymax=3900,x_plate_ohms=60
 ```
-And the `config.txt` file will look like this:  
-![image](https://github.com/user-attachments/assets/eb698c68-0dce-4346-9013-562dcafa3381)
 
 ### Step 2  
-Download the `hyperpixel4.dtbo`file in this github page   
-Put the `hyperpixel4.dtbo`file into `/boot/overlays`folder  
-Now you can insert the TF card in to the slot and your HackberryPi will run Kali Linux on the screen.  
-![Kalilinux Foto](https://github.com/user-attachments/assets/59792d53-11be-4482-83eb-5bd8ca7a9110)
+Reboot. The display should be available on `/dev/fb1`. Route the console:
+
+```sh
+sudo con2fbmap 1 1
+```
+
+### Step 3 – Calibrate touch  
+```sh
+sudo apt-get install xinput-calibrator
+DISPLAY=:0.0 xinput_calibrator
+```
+
+---
+
 # RetroPi OS  
+
 ### Step 1  
-Add the following lines in `/boot/config.txt` in your TF card  
+Add the following lines to `/boot/config.txt` in your TF card:
 
 ```sh
-dtoverlay=hyperpixel4
-enable_dpi_lcd=1
-dpi_group=2
-dpi_mode=87
-dpi_output_format=0x5f026
-dpi_timings=720 0 20 20 40 720 0 15 15 15 0 0 0 60 0 36720000 4
+dtparam=spi=on
+dtoverlay=fbtft,spi0-0-speed=32000000,width=320,height=480,bgr,rotate=270,reset_pin=27,dc_pin=25,led_pin=18
+dtoverlay=ads7846,cs=1,speed=2000000,penirq=17,penirq_pull=2,swapxy=1,pmax=255,xmin=200,xmax=3900,ymin=200,ymax=3900,x_plate_ohms=60
 ```
-And the `config.txt` file will look like this:  
-![image](https://github.com/user-attachments/assets/40c5440e-34c2-45ca-aa42-7911d98e7115)
 
 ### Step 2  
-Download the `hyperpixel4.dtbo`file in this github page   
-Put the `hyperpixel4.dtbo`file into `/boot/overlays`folder  
-Now you can insert the TF card in to the slot and your HackberryPi will run RetroPi OS on the screen.  
-![RetroPiFoto](https://github.com/user-attachments/assets/8cc5cef6-7c7e-4d3f-ad7a-3357ff6c9ce3)
+In `/etc/emulationstation/es_systems.cfg` (or the equivalent Retropie config), ensure the framebuffer is pointed to `/dev/fb1`:
+
+```sh
+export SDL_FBDEV=/dev/fb1
+```
+
+Reboot. Emulation Station should launch on the ST7798 display.
+
+---
 
 # Radxa Cubie A7Z  
-The Radxa Cubie A7Z runs Debian Linux and uses a different boot configuration from Raspberry Pi OS. Instead of `config.txt`, display settings are managed via `/boot/uEnv.txt` or `/boot/armbianEnv.txt` depending on the image used.
+The Radxa Cubie A7Z runs Debian Linux and uses a different boot configuration from Raspberry Pi OS. Instead of `config.txt`, display settings are managed via `/boot/armbianEnv.txt`.
 
 ### Step 1 – Flash the Radxa A7Z Debian image
 Download the official Debian image from the [Radxa A7Z download page](https://docs.radxa.com/en/cubie/a7z/getting-started/download) and flash it to a microSD card using [Balena Etcher](https://www.balena.io/etcher/) or Raspberry Pi Imager.
 
-### Step 2 – Enable the DPI display overlay
+### Step 2 – Enable SPI and the ST7798 display overlay
 Mount the microSD card on your PC (or SSH into the board after first boot) and open `/boot/armbianEnv.txt`:
 
 ```sh
 sudo nano /boot/armbianEnv.txt
 ```
 
-Add the following lines to enable the 720×720 DPI display:
+Add the following lines:
 
 ```sh
-overlays=hyperpixel4
-param_dpi_hactive=720
-param_dpi_vactive=720
-param_dpi_hfp=20
-param_dpi_hsync=20
-param_dpi_hbp=40
-param_dpi_vfp=15
-param_dpi_vsync=15
-param_dpi_vbp=15
-param_dpi_clock=36720000
+overlays=spi-display
+param_disp_spi_bus=0
+param_disp_spi_cs=0
+param_disp_spi_speed=32000000
+param_disp_driver=st7796s
+param_disp_rotate=270
+param_disp_dc=25
+param_disp_reset=27
+param_disp_width=320
+param_disp_height=480
+param_disp_bgr=1
 ```
 
-> **Note:** The Radxa A7Z uses an Allwinner A733 SoC, which does not use the `hyperpixel4` overlay from Raspberry Pi. The overlay name and parameter keys depend on the kernel and OS image you are using. To find available overlays on your system run `ls /boot/overlays/` and look for a DPI or LCD-related entry. For an up-to-date, confirmed working configuration for the HackberryPi 720×720 display on the Radxa A7Z, consult the [Radxa documentation](https://docs.radxa.com/en/cubie/a7z) or the community [Discord channel](https://discord.gg/WzPthAmMbP).
+> **Note:** The ST7798 is electrically compatible with the ST7796S driver. If the `spi-display` overlay is not available in your image, check `/boot/overlays/` for an equivalent SPI LCD overlay. Consult the [Radxa documentation](https://docs.radxa.com/en/cubie/a7z) or the community [Discord channel](https://discord.gg/WzPthAmMbP) for the latest confirmed working overlay for this board.
 
-### Step 3 – Reboot
+### Step 3 – Enable XPT2046 touch controller
+In the same `/boot/armbianEnv.txt`, also add:
+
+```sh
+param_touch_spi_bus=0
+param_touch_spi_cs=1
+param_touch_speed=2000000
+param_touch_irq=17
+```
+
+### Step 4 – Reboot
 Insert the microSD card, power on the HackberryPi, and the display should be active after the boot sequence completes.
 
-# DietPi  
+# DietPi
 DietPi is an extremely lightweight Debian OS, highly optimised for minimal CPU and RAM resource usage. The instruction is made by [Bjoern Franck](https://github.com/bjoernfranck)  
 You can view the tutorial at this [page](https://github.com/bjoernfranck/HackberryPi/tree/main/DietPi)  
 ![image](https://github.com/user-attachments/assets/31e83c06-085c-4b7a-b38f-0236433038fb)
