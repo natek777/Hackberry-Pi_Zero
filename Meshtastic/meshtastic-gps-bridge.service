@@ -1,0 +1,20 @@
+[Unit]
+Description=Meshtastic GPS NMEA Bridge
+Documentation=https://github.com/natek777/Hackberry-Pi_Zero/tree/main/Meshtastic
+After=meshtastic-gpsd.service
+Requires=meshtastic-gpsd.service
+
+[Service]
+Type=simple
+User=pi
+# Adjust --port if your device enumerates differently (/dev/ttyUSB0, etc.)
+ExecStart=/usr/bin/python3 /home/pi/Meshtastic/meshtastic_gps_bridge.py \
+    --port /dev/ttyACM0 \
+    --pty /tmp/gps0
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
